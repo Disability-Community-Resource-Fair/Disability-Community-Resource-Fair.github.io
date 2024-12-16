@@ -1,0 +1,4 @@
+User-agent: *
+Disallow:
+
+Sitemap: https://Disability-Community-Resource-Fair.github.io/sitemap.xml
