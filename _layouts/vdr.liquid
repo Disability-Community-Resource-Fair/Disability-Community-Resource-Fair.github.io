@@ -12,27 +12,6 @@ title: Vendor List
     {% endif %}
   </header>
 
-  <div>
-    <h3 data-toc-skip>Age Range Served:</h3>
-    <p>
-      {% for range in site.tags %}
-        <a class="badge badge-secondary" href="{{ range[0] | slugify | prepend: '/vendors/tag/' | prepend: site.baseurl}}">
-          {{ range[0] | replace: "_", " " }}
-        </a>
-      {% endfor %}
-    </p>
-
-
-    <h3 data-toc-skip>Service Type:</h3>
-    <p>
-      {% for type in site.categories %}
-        <a class="badge badge-secondary" href="{{ type[0] | slugify | prepend: '/vendors/category/' | prepend: site.baseurl}}">
-          {{ type[0] | replace: "_", " " }}
-        </a>
-      {% endfor %}
-    </p>
-  </div>
-
 
   {% include vdr_list.liquid input_posts=site.posts %}
 </div>

@@ -1,28 +1,5 @@
 <script src="{{ '/assets/js/vendorsearch.js' | relative_url | bust_file_cache }}" type="module"></script>
 
-<form
-  class="form-inline"
-  action=""
-  onsubmit="event.preventDefault();return false;">
-  <div class="form-group">
-    <label for="vendorsearch" class="sr-only">Search</label>
-    <div class="input-group">
-      <div class="input-group-prepend">
-        <span class="input-group-text">
-          <i class="fa-solid fa-magnifying-glass"></i>
-        </span>
-      </div>
-      <input
-        type="text"
-        id="vendorsearch"
-        class="form-control"
-        spellcheck="false"
-        autocomplete="off"
-        class="search vendorsearch-form-input"
-        placeholder="Search">
-    </div>
-  </div>
-  <button type="button" class="btn btn-primary m-2">Search</button></form>
 
 {% comment %} SORT THEM {% endcomment %}
 {% assign sortedPosts = include.input_posts | sort: 'title' %}
@@ -33,7 +10,7 @@
 
     {% assign tags = post.tags | join: "" %}
     {% assign categories = post.categories | join: "" %}
-    <div class="card mt-3 p-3">
+    <div class="card">
       <div class="row">
         <div class="col-sm-12">
           <h3>
@@ -43,24 +20,24 @@
           <p>
             {% if post.phone_number %}
               <i class="fa-solid fa-phone fa-sm"></i>&nbsp;<a href="tel:{{post.phone_number}}">{{ post.phone_number }}</a>
-            {% endif %}
-            {% if post.phone_number and post.email %}
-              &nbsp; &middot; &nbsp;
+              &nbsp;
             {% endif %}
             {% if post.email %}
               <i class="fa-solid fa-envelope fa-sm"></i>&nbsp;<a href="mailto:{{post.email | encode_email}}">{{ post.email }}</a>
+              &nbsp;
+            {% endif %}
+            {% if post.address %}
+              <span style="white-space:nowrap;">
+                <i class="fa-solid fa-map-marker fa-sm"></i>&nbsp;<a href="https://maps.google.com/?q={{post.address}}">{{ post.address }}</a>
+                &nbsp;
+              </span>
+            {% endif %}
+            {% if post.website %}
+              <span style="white-space:nowrap;">
+                <i class="fa-solid fa-globe fa-sm"></i>&nbsp;<a href="https://{{post.website}}">{{ post.website }}</a>
+              </span>
             {% endif %}
           </p>
-          {% if post.address %}
-            <p>
-              <i class="fa-solid fa-map-marker fa-sm"></i>&nbsp;<a href="https://maps.google.com/?q={{post.address}}">{{ post.address }}</a>
-            </p>
-          {% endif %}
-          {% if post.website %}
-            <p>
-              <i class="fa-solid fa-globe fa-sm"></i>&nbsp;<a href="https://{{post.website}}">{{ post.website }}</a>
-            </p>
-          {% endif %}
           <p>
             {% if tags != "" %}
               {% for tag in post.tags %}
