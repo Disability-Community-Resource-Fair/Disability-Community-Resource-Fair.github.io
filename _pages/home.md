@@ -30,13 +30,13 @@ nav_order: 10
       <h1 class="post-title text-center">
         Welcome!
       </h1>
-      <p>The second annual Disability Community Resource Fair is an event designed to help families discover and connect
+      <p>The annual Disability Community Resource Fair is an event designed to help families discover and connect
         to local services in the area. The event will include family-friendly activities and a community resource fair
         featuring local service providers.</p>
       <h1 class="post-title text-center">Event Details</h1>
       <ul class="list-unstyled">
         <li><b>What:</b> Disability related resources and information</li>
-        <li><b>When:</b> Saturday, May 2, 2026 ——— 10am to 1pm</li>
+        <li><b>When:</b> Saturday, May 2, 2026 from 10am to 1pm</li>
         <li><b>Where:</b> Mechanicsburg Middle School <a href="https://maps.google.com/?q=1750 S Market St, Mechanicsburg, PA 17055">1750 S Market St, Mechanicsburg, PA 17055</a></li>
         <li><b>Why:</b> It's a fun way to connect with your local community and learn about available resources!</li>
       </ul>
