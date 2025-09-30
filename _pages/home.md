@@ -18,9 +18,9 @@ nav_order: 10
 </div>
 
 <div class="vendor-buttons btn-toolbar justify-content-center my-2">
-  <a href="/vendors" class="btn btn-primary">View Resources</a>
+  <!-- <a href="/vendors" class="btn btn-primary">View Resources</a> -->
   <a href="/vendor-information" class="btn btn-secondary">Resource Vendor Registration</a>
-  <a href="/sponsor-information" class="btn btn-info">Sponsor Registration</a>
+  <!-- <a href="/sponsor-information" class="btn btn-info">Sponsor Registration</a> -->
 </div>
 
 <hr class="mt-0" />
@@ -36,7 +36,7 @@ nav_order: 10
       <h1 class="post-title text-center">Event Details</h1>
       <ul class="list-unstyled">
         <li><b>What:</b> Disability related resources and information</li>
-        <li><b>When:</b> Saturday, March 22, 2025 from 10am to 1pm</li>
+        <li><b>When:</b> Saturday, May 2, 2026 ——— 10am to 1pm</li>
         <li><b>Where:</b> Mechanicsburg Middle School <a href="https://maps.google.com/?q=1750 S Market St, Mechanicsburg, PA 17055">1750 S Market St, Mechanicsburg, PA 17055</a></li>
         <li><b>Why:</b> It's a fun way to connect with your local community and learn about available resources!</li>
       </ul>

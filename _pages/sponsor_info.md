@@ -3,7 +3,7 @@ layout: page
 permalink: /sponsor-information/
 title: Information for Sponsors
 ---
-<div class="vendor-buttons btn-toolbar justify-content-center my-3">
+<!-- <div class="vendor-buttons btn-toolbar justify-content-center my-3">
   <a href="/assets/Sponsorship Letter with form 2025.docx" class="btn btn-primary">Download Sponsorship Form</a>
 </div>
 
@@ -12,4 +12,4 @@ Events like this are made possible throught support from our local community. We
 Gold, Silver and Bronze sponsorship tiers are available. Please download the linked document above for details on tier benefits and instructions for registering. If you are unable to open and fill the word document, please contact us for an alternative format.
 
 
-{% include sponsor_thank.liquid %}
+{% include sponsor_thank.liquid %} -->

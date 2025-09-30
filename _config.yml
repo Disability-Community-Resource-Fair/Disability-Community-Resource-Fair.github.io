@@ -86,7 +86,7 @@ bing_site_verification: # out your bing-site-verification ID (Bing Webmaster)
 # -----------------------------------------------------------------------------
 
 blog_name: Disability Community Resource Fair # blog_name will be displayed in your blog page
-blog_description: March 22nd, 2025
+blog_description: May 2nd, 2026
 permalink: /vendors/:title/
 lsi: false # produce an index for related posts
 
