@@ -8,7 +8,7 @@ nav: false
 <div class="post accessibility">
     <article class="post-content">
     <p>
-        We strive to ensure that everyone is able to explore the fair and find resources helpful to them. Below is some information on the accessibility features that have been put in place. If you don't see the information you are looking for or require additional accomodations, please reach out to us via our <a href="/contact-us">contact page</a>.
+        We strive to ensure that everyone is able to explore the fair and find resources helpful to them. Below is some information on the accessibility features that have been put in place. If you don't see the information you are looking for or require additional accommodations, please reach out to us via our <a href="/contact-us">contact page</a>.
     </p>
     <div class="card mb-3">
         <div class="row">
