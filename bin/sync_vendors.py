@@ -31,8 +31,8 @@ def ascii_sanitize(text: str) -> str:
         return ""
     text = str(text)
     # Normalize unicode accents to ASCII
-    text = unicodedata.normalize("NFKD", text)
-    text = text.encode("ascii", "ignore").decode("ascii")
+    # text = unicodedata.normalize("NFKD", text)
+    # text = text.encode("ascii", "ignore").decode("ascii")
     return text
 
 
@@ -115,6 +115,18 @@ def parse_csv(csv_path: Path) -> list[dict]:
         rows = [dict(r) for r in reader]
     return rows
 
+service_categories = {
+"Behavioral Services, ABA Therapy, Assessment & Treatment",
+"Social, Recreational, Fitness",
+"Schools, Educational Programs, Advocacy",
+"Transitioning Youth and Adults",
+"Accessibility, Inclusion, Safety, Health",
+"Camps",
+"Therapeutic Services",
+"Financial Planning, Insurance",
+"Job Resources",
+"Faith-based / Religious Organization",
+}
 
 @dataclass
 class Vendor:
@@ -140,9 +152,11 @@ class Vendor:
 
         raw_services = (row.get("Check the main type of service your organization provides. You may select more than one box if your organization provides a wide variety of services, but please only choose the categories that best describe the majority of the services you provide.") or "")
         # Treat the full string as a single category value, preserving commas but removing spaces by underscoring.
-        category = ascii_sanitize(raw_services.strip())
-        category = re.sub(r"\s+", " ", category)
-        category = category.replace(" ", "_")
+        categories = []
+        for cat in service_categories:
+            if cat in raw_services:
+                categories.append(cat.replace(" ", "_"))
+        category = " ".join(categories)
 
         raw_ages = (row.get("Check the age/grade range your organization serves. You may select more than one box if your organization provides a wide variety of services, but please only choose the categories that best describe the majority of the services you provide.") or "")
         ages_list = [s.strip() for s in raw_ages.split(",")]
