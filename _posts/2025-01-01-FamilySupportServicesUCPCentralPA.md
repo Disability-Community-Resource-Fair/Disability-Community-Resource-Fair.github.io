@@ -3,7 +3,7 @@ layout: post
 title: Family Support Services UCP Central PA
 website: www.ucpcentralpa.org/services/family-support-services/
 tags: Ages_Birth-3 Early_Intervention_(Ages_3-5) Elementary_(Grades_K-6) Secondary_(Grades_7-12) Post_Secondary_(High_School_and_Beyond)
-categories: Accessibility,_Inclusion,_Safety,_Health Schools,_Educational_Programs,_Advocacy Social,_Recreational,_Fitness
+categories: Social,_Recreational,_Fitness Schools,_Educational_Programs,_Advocacy Accessibility,_Inclusion,_Safety,_Health
 address: 55 Utley Drive, Camp Hill, PA 17011
 phone_number: 717-737-3477
 email: FamilySupportServices@ucpcentralpa.org

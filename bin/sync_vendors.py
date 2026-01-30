@@ -73,7 +73,7 @@ def name_to_slug(name: str) -> str:
 
 
 def join_address(row: dict) -> str:
-    a1 = (row.get("Street Address 1") or "").strip()
+    a1 = (row.get("Street Address 1") or "").strip().rstrip(",")
     a2 = (row.get("Street Address 2") or "").strip()
     city = (row.get("City") or "").strip()
     state = (row.get("State") or "").strip()
