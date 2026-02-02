@@ -3,8 +3,8 @@ layout: post
 title: Lindsay Wellman (Master IEP Coach® and Special Education Consultant)
 website: lindsaywellman.com
 tags: Secondary_(Grades_7-12) Post_Secondary_(High_School_and_Beyond)
-categories: Schools,_Educational_Programs,_Advocacy Faith-based_/_Religious_Organization
-address: 3013 Regency Drive, Sinking Spring, PA 19608
+categories: Faith-based_/_Religious_Organization Schools,_Educational_Programs,_Advocacy
+address: virtual services nationwide + in-person in Berks County, PA
 phone_number: 973-600-5115
 email: lindsay@lindsaywellman.com
 ---

@@ -3,7 +3,7 @@ layout: post
 title: Thrive Center for Independent Living
 website: thrivecil.org
 tags: Ages_Birth-3 Early_Intervention_(Ages_3-5) Elementary_(Grades_K-6) Secondary_(Grades_7-12) Post_Secondary_(High_School_and_Beyond)
-categories: Job_Resources Schools,_Educational_Programs,_Advocacy Transitioning_Youth_and_Adults Accessibility,_Inclusion,_Safety,_Health Financial_Planning,_Insurance
+categories: Financial_Planning,_Insurance Transitioning_Youth_and_Adults Job_Resources Accessibility,_Inclusion,_Safety,_Health Schools,_Educational_Programs,_Advocacy
 address: 2601 Herr Street, Harrisburg, PA 17103
 phone_number: 717-731-1900
 email: gtaveras@thrivecil.org

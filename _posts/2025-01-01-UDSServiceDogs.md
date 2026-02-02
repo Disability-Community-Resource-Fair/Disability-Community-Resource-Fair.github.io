@@ -3,7 +3,7 @@ layout: post
 title: UDS Service Dogs
 website: udservices.org/services/personal-care-independence/service-dogs/
 tags: Early_Intervention_(Ages_3-5) Elementary_(Grades_K-6) Secondary_(Grades_7-12) Post_Secondary_(High_School_and_Beyond)
-categories: Schools,_Educational_Programs,_Advocacy Therapeutic_Services
+categories: Therapeutic_Services Schools,_Educational_Programs,_Advocacy
 address: 2270 Erin Court, Lancaster, PA 17601
 phone_number: 717-397-1841
 email: resourcecenter@udsfoundation.org
