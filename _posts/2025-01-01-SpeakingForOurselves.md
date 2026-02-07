@@ -3,7 +3,7 @@ layout: post
 title: Speaking For Ourselves
 website: NA
 tags: Post_Secondary_(High_School_and_Beyond)
-categories: Accessibility,_Inclusion,_Safety,_Health Social,_Recreational,_Fitness Schools,_Educational_Programs,_Advocacy
+categories: Social,_Recreational,_Fitness Schools,_Educational_Programs,_Advocacy Accessibility,_Inclusion,_Safety,_Health
 address: 1100 S Cameron St, Harrisburg, PA 17104
 phone_number: 717-982-7178
 email: brigmwilson@gmail.com

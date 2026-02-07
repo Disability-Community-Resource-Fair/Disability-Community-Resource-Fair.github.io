@@ -115,7 +115,7 @@ def parse_csv(csv_path: Path) -> list[dict]:
         rows = [dict(r) for r in reader]
     return rows
 
-service_categories = {
+service_categories = [
 "Behavioral Services, ABA Therapy, Assessment & Treatment",
 "Social, Recreational, Fitness",
 "Schools, Educational Programs, Advocacy",
@@ -126,7 +126,7 @@ service_categories = {
 "Financial Planning, Insurance",
 "Job Resources",
 "Faith-based / Religious Organization",
-}
+]
 
 @dataclass
 class Vendor:
