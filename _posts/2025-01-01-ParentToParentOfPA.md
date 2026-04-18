@@ -8,4 +8,4 @@ address: 6340 Flank Drive, Harrisburg, PA 17112
 phone_number: 717-994-4243
 email: tshultz@parenttoparent.org
 ---
-Parent to Parent Coloring Page with Crayons along with Parent to Parent Rac cards and other flyer information.
+Parent to Parent of PA will have a coloring page with crayons, along with Parent to Parent Rac cards and other flyer information.

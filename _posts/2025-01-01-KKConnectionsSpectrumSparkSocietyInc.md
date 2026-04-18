@@ -8,4 +8,4 @@ address: 27 South 24th Street, PO Box 594, Camp Hill, PA 17011
 phone_number: 717-614-7877
 email: chrissy@knkconnections.net
 ---
-Preview of my upcoming “Autism Parent Resource Binder”, business cards, flyers, brochures, much more
+We will be sharing a preview of our upcoming Autism Parent Resource Binder, business cards, flyers, brochures, and much more.

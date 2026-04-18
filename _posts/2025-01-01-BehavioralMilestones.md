@@ -8,4 +8,4 @@ address: 1650 Limekiln Pike, B19, Dresher PA 19025, Dresher, PA 19025
 phone_number: 917-203-3737
 email: office@behavioralmilestones.org
 ---
-Play based ABA therapy
+Behavioral Milestones provides play-based ABA therapy.

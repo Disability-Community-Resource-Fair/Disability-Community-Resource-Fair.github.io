@@ -8,4 +8,4 @@ address: 700 Bent Creek Road, Mechanicsburg, PA 17050
 phone_number: 717-215-9168
 email: lkelly@kw.com
 ---
-Advocate in real estate transactions for special needs individuals and their families.
+We advocate in real estate transactions for special needs individuals and their families.

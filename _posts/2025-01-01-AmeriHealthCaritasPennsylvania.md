@@ -8,4 +8,4 @@ address: 8040 Carlson Suite 500, Harrisburg, Pa 17112
 phone_number: 888-991-7200
 email: klucas@amerihealthcaritaspa.com
 ---
-Medicaid Managed Care Organization (MCO)
+AmeriHealth Caritas Pennsylvania is a Medicaid Managed Care Organization (MCO).

@@ -8,4 +8,4 @@ address: 135 W Simpson Street, Mechanicsburg, PA 17055
 phone_number: 717-379-8329
 email: karinmch@comcast.net
 ---
-Inclusive praise and worship opportunity for individuals with intellectual and developmental disability and their family. Participation during worship is encouraged.
+Rejoicing Spirits offers an inclusive praise and worship opportunity for individuals with intellectual and developmental disability and their family. Participation during worship is encouraged.

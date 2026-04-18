@@ -8,4 +8,4 @@ address: 345 Market Street, Bloomsburg, PA 17815
 phone_number: 717-884-9543
 email: carritacounseling@gmail.com
 ---
-Mental Health Counseling and on site therapy dog
+Carrita Counseling offers mental health counseling and an on-site therapy dog.
