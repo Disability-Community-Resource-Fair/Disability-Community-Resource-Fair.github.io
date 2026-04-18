@@ -8,4 +8,4 @@ address: 1615 Ritner Hwy, Carlisle, PA 17013
 phone_number: 717-240-6320
 email: rlkichman@cumberlandcountypa.gov
 ---
-Birth to Three Developmental Program
+Cumberland/Perry MH/IDD Early Intervention is a Birth to Three Developmental Program.

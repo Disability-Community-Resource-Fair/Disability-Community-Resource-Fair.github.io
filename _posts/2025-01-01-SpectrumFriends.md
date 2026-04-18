@@ -8,4 +8,4 @@ address: 26 North Market st, Apt 204, Mechanicsburg, PA 17055
 phone_number: 717-766-2634
 email: tfh61@yahoo.com
 ---
-Social group
+Spectrum Friends is a social group.

@@ -8,4 +8,4 @@ address: 212-214 south main street, butler, PA 16001
 phone_number: 412-638-8500
 email: JINGERSOLL@ccrinfo.org
 ---
-SUPPORTS COORDINATION SERVICES FOR INDIVIDUALS DIAGNOSED WITH INTELLECTUAL DISABILITIES, AUTISM, OR MEDICALLY COMPLEX DIAGNOSES.
+Center for Community Resources supports coordination services for individuals diagnosed with intellectual disabilities, autism, or medically complex diagnoses.

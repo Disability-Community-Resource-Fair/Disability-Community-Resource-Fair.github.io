@@ -8,4 +8,4 @@ address: 500 S Broad St, Mechanicsburg, PA 17055
 phone_number: 717-691-4500
 email: kdiegel@mbgsd.org
 ---
-Life Skills classroom in the Mechanicsburg Area School District
+MASD Life Skills is a Life Skills classroom in the Mechanicsburg Area School District.

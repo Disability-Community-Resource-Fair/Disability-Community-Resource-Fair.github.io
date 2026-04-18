@@ -8,4 +8,4 @@ address: 132 Kline Village, Harrisburg, PA 17104
 phone_number: 717-967-8006
 email: mgebremariam@myallamericancare.com
 ---
-All American Home Care
+All American Home Care provides in-home care services.

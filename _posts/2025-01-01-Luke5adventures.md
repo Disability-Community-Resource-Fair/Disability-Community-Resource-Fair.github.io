@@ -8,4 +8,4 @@ address: 814 Flintlock Ridge Road, Mechanicsburg, PA 17055
 phone_number: 717-574-2294
 email: liv.yoder@luke5adventures.org
 ---
-Making the outdoors accessible to all . We have a specialized chair that can go anywhere
+Luke5adventures makes the outdoors accessible to all. We have a specialized chair that can go anywhere.

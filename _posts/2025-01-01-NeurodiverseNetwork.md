@@ -8,4 +8,4 @@ address: 422 Bridge St, New Cumberland, Pa 17070
 phone_number: 717-724-7780
 email: hello@ndnet.org
 ---
-Local community center offering activities and support groups for people of all ages with brain differences or invisible disabilities.
+Neurodiverse Network is a local community center offering activities and support groups for people of all ages with brain differences or invisible disabilities.

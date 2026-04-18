@@ -8,5 +8,4 @@ address: NA, NA, Pa 17331
 phone_number: 419-205-7902
 email: ejfox@fbhi.net
 ---
-Empowering Individuals Everyday
 At Focus Behavioral Health, we understand that every individual is unique. Our compassionate and experienced team is dedicated to helping every individual reach their full potential.
