@@ -16,11 +16,53 @@ This script:
 
 import os
 import re
+import argparse
 import frontmatter
 import csv
 import zipfile
 import xml.etree.ElementTree as ET
 from collections import defaultdict
+from docx import Document
+from docx.shared import Pt, RGBColor, Inches
+from docx.enum.style import WD_STYLE_TYPE
+from docx.enum.text import WD_ALIGN_PARAGRAPH
+
+EVENT_DATE_TIME = 'Saturday, May 2, 2026 from 10:00 AM to 1:00 PM'
+
+def read_vendor_filename_map(map_path):
+    """Read a manual vendor filename / override mapping from CSV in _data.
+
+    Expected CSV format (header optional):
+    request_name,filename,table_number_override
+    """
+    mapping = {}
+    if not os.path.exists(map_path):
+        return mapping
+
+    try:
+        with open(map_path, 'r', encoding='utf-8') as f:
+            reader = csv.reader(f)
+            for row in reader:
+                if not row:
+                    continue
+                # allow header row detection
+                if row[0].strip().lower() in ('request_name', 'vendor'):
+                    continue
+
+                req = row[0].strip()
+                if not req:
+                    continue
+                filename = row[1].strip() if len(row) > 1 else ''
+                override = row[2].strip() if len(row) > 2 else ''
+                mapping[normalize_name(req)] = {
+                    'request_name': req,
+                    'filename': filename,
+                    'table_override': override,
+                }
+    except Exception:
+        return mapping
+
+    return mapping
 
 def extract_vendors_from_excel(excel_path, output_csv_path):
     """Extract vendors from fair_logistics.xlsx 2026 Vendor Requests sheet."""
@@ -300,27 +342,416 @@ def format_table_number_set(number_values):
 
     return ', '.join(str(value) for value in sorted(number_values, key=sort_key))
 
-def generate_vendor_directory(vendor_requests, vendor_details, output_path, output_missing_path=None, vendor_map_path=None):
+def extract_docx_template_styles(template_path):
+    """Extract font, size, and color information from an existing DOCX template.
+    
+    Returns a dictionary with style information for replication.
+    """
+    if not os.path.exists(template_path):
+        return {}
+    
+    try:
+        template_doc = Document(template_path)
+        extracted = {}
+        
+        # Extract from existing character styles (tag styles)
+        for style_name in ['Vendor Service Tag', 'Vendor Age Tag', 'Vendor All Ages Tag']:
+            if style_name in template_doc.styles:
+                style = template_doc.styles[style_name]
+                font = style.font
+                extracted[style_name] = {
+                    'font_name': font.name,
+                    'font_size': font.size,
+                    'color': font.color.rgb if font.color and font.color.rgb else None,
+                    'bold': font.bold,
+                }
+        
+        # Extract from heading styles
+        for level in [1, 2, 3]:
+            style_name = f'Heading {level}'
+            if style_name in template_doc.styles:
+                style = template_doc.styles[style_name]
+                font = style.font
+                extracted[style_name] = {
+                    'font_name': font.name,
+                    'font_size': font.size,
+                    'color': font.color.rgb if font.color and font.color.rgb else None,
+                    'bold': font.bold,
+                }
+        
+        # Extract from normal paragraph style
+        if 'Normal' in template_doc.styles:
+            style = template_doc.styles['Normal']
+            font = style.font
+            extracted['Normal'] = {
+                'font_name': font.name,
+                'font_size': font.size,
+                'color': font.color.rgb if font.color and font.color.rgb else None,
+            }
+        
+        return extracted
+    except Exception as e:
+        print(f"Warning: Could not extract styles from template: {e}")
+        return {}
+
+
+def ensure_docx_tag_styles(document, extracted_styles=None):
+    """Create reusable character styles for DOCX tag rendering.
+    
+    If extracted_styles is provided, uses those colors/fonts instead of defaults.
+    """
+    # Default colors (fallback)
+    default_specs = [
+        ('Vendor Service Tag', RGBColor(2, 61, 102)),
+        ('Vendor Age Tag', RGBColor(74, 110, 27)),
+        ('Vendor All Ages Tag', RGBColor(74, 23, 102)),
+    ]
+
+    for style_name, default_color in default_specs:
+        if style_name not in document.styles:
+            style = document.styles.add_style(style_name, WD_STYLE_TYPE.CHARACTER)
+            
+            # Use extracted style if available, otherwise use defaults
+            if extracted_styles and style_name in extracted_styles:
+                extracted = extracted_styles[style_name]
+                style.font.size = extracted.get('font_size') or Pt(9)
+                style.font.bold = extracted.get('bold', True)
+                if extracted.get('color'):
+                    style.font.color.rgb = extracted.get('color')
+                else:
+                    style.font.color.rgb = default_color
+                if extracted.get('font_name'):
+                    style.font.name = extracted.get('font_name')
+            else:
+                style.font.size = Pt(9)
+                style.font.bold = True
+                style.font.color.rgb = default_color
+
+
+def add_docx_tag_run(paragraph, text, style_name):
+    run = paragraph.add_run(text)
+    run.style = style_name
+    return run
+
+
+def add_docx_badge_paragraph(document, service_labels=None, age_labels=None, all_ages=False):
+    """Add a single-line badge paragraph to a docx document."""
+    paragraph = document.add_paragraph()
+
+    labels_added = False
+    for label in service_labels or []:
+        if label:
+            if labels_added:
+                paragraph.add_run(' ')
+            add_docx_tag_run(paragraph, label, 'Vendor Service Tag')
+            labels_added = True
+
+    if all_ages:
+        if labels_added:
+            paragraph.add_run(' ')
+        add_docx_tag_run(paragraph, 'All ages', 'Vendor All Ages Tag')
+        return paragraph
+
+    for label in age_labels or []:
+        if label:
+            if labels_added:
+                paragraph.add_run(' ')
+            add_docx_tag_run(paragraph, label, 'Vendor Age Tag')
+            labels_added = True
+
+    return paragraph
+
+def add_docx_paragraphs(document, content):
+    for block in content.split('\n\n'):
+        block = block.strip()
+        if block:
+            document.add_paragraph(block)
+
+def build_vendor_directory_banner_markdown(logo_href):
+    return (
+        f'<p align="center"><img src="{logo_href}" alt="Disability Community Resource Fair logo" style="max-width:220px;height:auto;"></p>\n\n'
+        f'**Event Date & Time:** {EVENT_DATE_TIME}\n\n'
+    )
+
+def build_vendor_directory_banner_html(logo_href):
+    return [
+        f'<div style="text-align:center;margin:1rem 0 1.25rem 0;">',
+        f'<img src="{logo_href}" alt="Disability Community Resource Fair logo" style="max-width:220px;height:auto;display:block;margin:0 auto 0.75rem auto;">',
+        f'<div style="font-weight:600;">{EVENT_DATE_TIME}</div>',
+        '</div>',
+    ]
+
+def add_vendor_directory_banner_docx(document, logo_path):
+    logo_paragraph = document.add_paragraph()
+    logo_paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    if os.path.exists(logo_path):
+        logo_run = logo_paragraph.add_run()
+        logo_run.add_picture(logo_path, width=Inches(2.4))
+
+    event_paragraph = document.add_paragraph(EVENT_DATE_TIME)
+    event_paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    event_paragraph.runs[0].bold = True
+
+def write_vendor_directory_docx(output_path, active, cancelled_entries, all_tags, num_to_name, age_groups):
+    """Write the vendor directory as a DOCX document.
+    
+    Extracts custom styles from existing DOCX (if it exists) and applies them to the new output.
+    """
+    # Extract styles from existing DOCX template if it exists
+    extracted_styles = extract_docx_template_styles(output_path)
+    
+    document = Document()
+    ensure_docx_tag_styles(document, extracted_styles=extracted_styles)
+    
+    # Apply extracted heading styles if available
+    if extracted_styles:
+        for level in [1, 2, 3]:
+            heading_style = f'Heading {level}'
+            if heading_style in extracted_styles and heading_style in document.styles:
+                style_info = extracted_styles[heading_style]
+                style = document.styles[heading_style]
+                if style_info.get('font_size'):
+                    style.font.size = style_info.get('font_size')
+                if style_info.get('font_name'):
+                    style.font.name = style_info.get('font_name')
+                if style_info.get('color'):
+                    style.font.color.rgb = style_info.get('color')
+                # Explicitly set headings to not bold
+                style.font.bold = False
+        
+        # Apply extracted normal style
+        if 'Normal' in extracted_styles and 'Normal' in document.styles:
+            style_info = extracted_styles['Normal']
+            style = document.styles['Normal']
+            if style_info.get('font_size'):
+                style.font.size = style_info.get('font_size')
+            if style_info.get('font_name'):
+                style.font.name = style_info.get('font_name')
+            if style_info.get('color'):
+                style.font.color.rgb = style_info.get('color')
+    
+    document.core_properties.title = 'Disability Community Resource Fair 2026 - Vendor Directory'
+
+    logo_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(output_path))), 'assets', 'img', 'logo.png')
+    add_vendor_directory_banner_docx(document, logo_path)
+
+    document.add_heading('Disability Community Resource Fair 2026 - Vendor Directory', level=1)
+    document.add_paragraph(
+        'This is the comprehensive vendor directory for the 2026 Disability Community Resource Fair. '
+        'Vendors are listed by table number, with an index organized by age groups served.'
+    )
+
+    document.add_heading('Vendor Listings by Table Number', level=2)
+
+    for vendor in active:
+        title = vendor['detail']['title'] if vendor['detail'] else vendor['request_name']
+        document.add_heading(f"{vendor['number']}. {title}", level=3)
+
+        if vendor['detail']:
+            categories = parse_categories(vendor['detail']['categories'])
+            tags = parse_tags(vendor['detail']['tags'])
+            tag_set = set(tags)
+
+            if categories or tags:
+                add_docx_badge_paragraph(
+                    document,
+                    service_labels=categories,
+                    age_labels=None if all(a in tag_set for a in age_groups) else tags,
+                    all_ages=bool(tags) and all(a in tag_set for a in age_groups),
+                )
+
+            content = vendor['detail']['content'].strip()
+            if content:
+                add_docx_paragraphs(document, content)
+
+    if cancelled_entries:
+        document.add_heading('Unable to Attend', level=2)
+        for vendor in cancelled_entries:
+            title = vendor['detail']['title'] if vendor['detail'] else vendor['request_name']
+            document.add_heading(title, level=3)
+            if vendor['detail']:
+                categories = parse_categories(vendor['detail']['categories'])
+                tags = parse_tags(vendor['detail']['tags'])
+                tag_set = set(tags)
+
+                if categories or tags:
+                    add_docx_badge_paragraph(
+                        document,
+                        service_labels=categories,
+                        age_labels=None if all(a in tag_set for a in age_groups) else tags,
+                        all_ages=bool(tags) and all(a in tag_set for a in age_groups),
+                    )
+
+                content = vendor['detail']['content'].strip()
+                if content:
+                    add_docx_paragraphs(document, content)
+            else:
+                document.add_paragraph('Description unavailable.')
+
+    document.add_heading('Index by Age Group Served', level=2)
+    
+    # Build a combined index with both active and cancelled vendors
+    # For cancelled vendors, we'll use their request_name since they don't have numbers
+    combined_all_tags = defaultdict(set)
+    cancelled_names = set()
+    
+    # Add active vendors to combined index
+    for tag, vendors in all_tags.items():
+        for vendor_num in vendors:
+            combined_all_tags[tag].add(('number', vendor_num))
+    
+    # Add cancelled vendors to combined index
+    for cancelled_vendor in cancelled_entries:
+        if cancelled_vendor['detail']:
+            tags = parse_tags(cancelled_vendor['detail'].get('tags', ''))
+            cancelled_name = cancelled_vendor['detail']['title'] if cancelled_vendor['detail'] else cancelled_vendor['request_name']
+            cancelled_names.add(cancelled_name)
+            for tag in tags:
+                if tag:
+                    combined_all_tags[tag].add(('cancelled', cancelled_name))
+    
+    # Sort key function for numeric table numbers
+    def sort_key_for_index(entry):
+        entry_type, entry_value = entry
+        
+        # Active vendors (numbers) come first, sorted numerically
+        if entry_type == 'number':
+            try:
+                # Extract leading number from strings like "19-21" or "3 & 4"
+                match = re.match(r'\s*(\d+)', str(entry_value))
+                if match:
+                    return (0, int(match.group(1)), str(entry_value))
+            except (ValueError, AttributeError):
+                pass
+            return (0, float('inf'), str(entry_value))
+        
+        # Cancelled vendors come second, alphabetically
+        return (1, 0, str(entry_value))
+    
+    # Render the index
+    for tag in sorted(combined_all_tags.keys()):
+        vendors = sorted(combined_all_tags[tag], key=sort_key_for_index)
+        if not vendors:
+            continue
+
+        document.add_heading(tag, level=3)
+        for entry_type, entry_value in vendors:
+            if entry_type == 'number':
+                # Active vendor: use number without bullet
+                para = document.add_paragraph(f"{entry_value}. {num_to_name.get(entry_value, '')}")
+            else:
+                # Cancelled vendor: use bullet point
+                para = document.add_paragraph(f"{entry_value}", style='List Bullet')
+            
+            # Set consistent spacing for all index entries
+            para.paragraph_format.space_before = Pt(0)
+            para.paragraph_format.space_after = Pt(6)
+
+    document.save(output_path)
+
+def build_vendor_detail_index(vendor_details):
+    """Build normalized lookup keys for vendor detail records."""
+    detail_index = {}
+
+    for detail_name, detail_info in vendor_details.items():
+        title = detail_info.get('title') or detail_name
+        filename = detail_info.get('filename') or ''
+
+        keys = {
+            normalize_name(detail_name),
+            normalize_name(title),
+        }
+
+        if filename:
+            keys.add(normalize_name(filename))
+            keys.add(normalize_name(os.path.splitext(filename)[0]))
+            stem = os.path.splitext(filename)[0]
+            if '-' in stem:
+                keys.add(normalize_name(stem.split('-', 3)[-1]))
+
+        for key in keys:
+            if key:
+                detail_index[key] = detail_info
+
+    return detail_index
+
+def resolve_vendor_detail(request_name, vendor_details, vendor_filename_map=None, detail_index=None):
+    """Resolve a vendor detail record using filename map first, then normalized lookups."""
+    if detail_index is None:
+        detail_index = build_vendor_detail_index(vendor_details)
+
+    request_norm = normalize_name(request_name)
+
+    if vendor_filename_map:
+        mapped = vendor_filename_map.get(request_norm)
+        if mapped:
+            filename = mapped.get('filename', '')
+            if filename:
+                filename_norm = normalize_name(filename)
+                filename_stem_norm = normalize_name(os.path.splitext(filename)[0])
+                filename_tail_norm = normalize_name(os.path.splitext(filename)[0].split('-', 3)[-1])
+
+                if filename_norm in detail_index:
+                    return detail_index[filename_norm]
+                if filename_stem_norm in detail_index:
+                    return detail_index[filename_stem_norm]
+                if filename_tail_norm in detail_index:
+                    return detail_index[filename_tail_norm]
+
+                for detail_info in vendor_details.values():
+                    detail_filename = detail_info.get('filename', '')
+                    if detail_filename and (
+                        detail_filename == filename or
+                        os.path.basename(detail_filename) == os.path.basename(filename)
+                    ):
+                        return detail_info
+
+    if request_norm in detail_index:
+        return detail_index[request_norm]
+
+    for detail_name, detail_info in vendor_details.items():
+        if names_match(request_name, detail_name) or names_match(request_name, detail_info.get('title', '')):
+            return detail_info
+
+    return None
+
+def generate_vendor_directory(vendor_requests, vendor_details, output_path, output_missing_path=None, vendor_map_path=None, vendor_filename_map=None, cancelled_names=None):
     """Generate the vendor directory markdown file."""
     
     # Match vendor requests with details
     vendors_combined = []
     
+    # Normalize cancelled names
+    cancelled_norm = set()
+    if cancelled_names:
+        for cn in cancelled_names:
+            cancelled_norm.add(normalize_name(cn))
+
+    # Build list while applying manual filename/number overrides and skipping placeholders
+    detail_index = build_vendor_detail_index(vendor_details)
     for req_name, req_num in vendor_requests.items():
-        detail = None
-        for detail_name, detail_info in vendor_details.items():
-            req_lower = req_name.lower().replace('&', 'and').replace(' ', '')
-            detail_lower = detail_name.lower().replace('&', 'and').replace(' ', '')
-            detail_title_lower = detail_info['title'].lower().replace('&', 'and').replace(' ', '')
-            
-            if req_lower == detail_lower or req_lower == detail_title_lower:
-                detail = detail_info
-                break
-        
+        if not req_name or req_name.strip().lower() == 'empty':
+            continue
+
+        # apply manual overrides from vendor_filename_map if provided
+        detail = resolve_vendor_detail(req_name, vendor_details, vendor_filename_map, detail_index)
+        mapped = vendor_filename_map.get(normalize_name(req_name)) if vendor_filename_map else None
+
+        # override table number if mapping provides
+        if mapped and mapped.get('table_override'):
+            use_num = mapped.get('table_override')
+        else:
+            # default PPL First correction: ensure PPL First uses 63
+            if normalize_name(req_name) == normalize_name('PPL First'):
+                use_num = '63'
+            else:
+                use_num = req_num
+
         vendors_combined.append({
-            'number': req_num,
+            'number': use_num,
             'request_name': req_name,
-            'detail': detail
+            'detail': detail,
+            'is_cancelled': normalize_name(req_name) in cancelled_norm
         })
     
     def sort_key_number(val):
@@ -337,35 +768,55 @@ def generate_vendor_directory(vendor_requests, vendor_details, output_path, outp
         # fallback: sort as string after numeric ones
         return (1, str(val))
 
+    # sort and ensure cancelled vendors are placed at the end
     vendors_combined.sort(key=lambda x: sort_key_number(x['number']))
+    active = [v for v in vendors_combined if not v.get('is_cancelled')]
+    cancelled = [v for v in vendors_combined if v.get('is_cancelled')]
+    vendors_combined = active + cancelled
+    cancelled_lookup = {normalize_name(v['request_name']): v for v in cancelled}
+
+    def detail_for_cancelled_name(cancelled_name):
+        cancelled_norm_name = normalize_name(cancelled_name)
+        if cancelled_norm_name in cancelled_lookup:
+            return cancelled_lookup[cancelled_norm_name]
+
+        detail_info = resolve_vendor_detail(cancelled_name, vendor_details, vendor_filename_map, detail_index)
+        if detail_info:
+            return {
+                'number': None,
+                'request_name': cancelled_name,
+                'detail': detail_info,
+                'is_cancelled': True,
+            }
+
+        return {
+            'number': None,
+            'request_name': cancelled_name,
+            'detail': None,
+            'is_cancelled': True,
+        }
+
+    cancelled_entries = []
+    if cancelled_names:
+        for cancelled_name in cancelled_names:
+            cancelled_entries.append(detail_for_cancelled_name(cancelled_name))
+    else:
+        cancelled_entries = cancelled
     
     # Collect all categories and tags and build number->name map
     all_categories = defaultdict(set)
     all_tags = defaultdict(set)
     num_to_name = {}
+    # canonical age groups used across the site
+    AGE_GROUPS = [
+        'Ages Birth-3',
+        'Early Intervention (Ages 3-5)',
+        'Elementary (Grades K-6)',
+        'Secondary (Grades 7-12)',
+        'Post Secondary (High School and Beyond)'
+    ]
     
-    def normalize_name(s):
-        if not s:
-            return ''
-        ns = s.lower().replace('&', 'and')
-        # keep alphanumerics and spaces
-        import re
-        ns = re.sub(r'[^a-z0-9\s]', '', ns)
-        ns = ' '.join(ns.split())
-        return ns
-
-    def names_match(left, right):
-        left_norm = normalize_name(left)
-        right_norm = normalize_name(right)
-        if not left_norm or not right_norm:
-            return False
-        if left_norm == right_norm:
-            return True
-        if left_norm in right_norm or right_norm in left_norm:
-            return True
-
-        import difflib
-        return difflib.SequenceMatcher(a=left_norm, b=right_norm).ratio() >= 0.85
+    # Use module-level `normalize_name` and `names_match` helpers
     
     for v in vendors_combined:
         # Map table number to display name (use detail title if available)
@@ -384,7 +835,12 @@ def generate_vendor_directory(vendor_requests, vendor_details, output_path, outp
                     all_tags[tag].add(v['number'])
     
     # Generate markdown content
-    md_content = """# Disability Community Resource Fair 2026 - Vendor Directory
+    repo_root = os.path.dirname(os.path.abspath(__file__))
+    assets_dir = os.path.join(repo_root, 'assets')
+    rel_assets = os.path.relpath(assets_dir, os.path.dirname(os.path.abspath(output_path)))
+    rel_assets_href = rel_assets.replace(os.sep, '/')
+
+    md_content = build_vendor_directory_banner_markdown(f"{rel_assets_href}/img/logo.png") + """# Disability Community Resource Fair 2026 - Vendor Directory
 
 This is the comprehensive vendor directory for the 2026 Disability Community Resource Fair. Vendors are listed by table number, with an index organized by service categories and age groups served.
 
@@ -394,107 +850,180 @@ This is the comprehensive vendor directory for the 2026 Disability Community Res
 
 """
     
-    for v in vendors_combined:
+    for v in active:
         title = v['detail']['title'] if v['detail'] else v['request_name']
-        
         md_content += f"\n### {v['number']}. {title}\n\n"
-        
+
         if v['detail']:
-            # Add categories
+            # Add categories as inline tags
             cats = parse_categories(v['detail']['categories'])
             if cats:
-                cats_str = ', '.join([c for c in cats if c])
-                md_content += f"**Services:** {cats_str}\n\n"
-            
-            # Add tags (age groups)
+                cats_str = ' '.join([f'[{c}]' for c in cats if c])
+                md_content += f"Services: {cats_str}\n\n"
+
+            # Add tags (age groups) as inline tags
             tags = parse_tags(v['detail']['tags'])
             if tags:
-                tags_str = ', '.join([t for t in tags if t])
-                md_content += f"**Age Groups:** {tags_str}\n\n"
-            
-            # Add full content (no truncation)
+                # show 'All ages' if vendor covers all known age groups
+                tag_set = set(tags)
+                if all(a in tag_set for a in AGE_GROUPS):
+                    md_content += f"Age Groups: All ages\n\n"
+                else:
+                    tags_str = ' '.join([f'[{t}]' for t in tags if t])
+                    md_content += f"Age Groups: {tags_str}\n\n"
+
             content = v['detail']['content'].strip()
             if content:
                 md_content += f"{content}\n\n"
+
+    if cancelled_entries:
+        md_content += "\n---\n\n## Unable to Attend\n\n"
+        for v in cancelled_entries:
+            title = v['detail']['title'] if v['detail'] else v['request_name']
+            md_content += f"\n### {title}\n\n"
+            if v['detail']:
+                cats = parse_categories(v['detail']['categories'])
+                if cats:
+                    cats_str = ' '.join([f'[{c}]' for c in cats if c])
+                    md_content += f"Services: {cats_str}\n\n"
+
+                tags = parse_tags(v['detail']['tags'])
+                if tags:
+                    tag_set = set(tags)
+                    if all(a in tag_set for a in AGE_GROUPS):
+                        md_content += f"Age Groups: All ages\n\n"
+                    else:
+                        tags_str = ' '.join([f'[{t}]' for t in tags if t])
+                        md_content += f"Age Groups: {tags_str}\n\n"
+
+                content = v['detail']['content'].strip()
+                if content:
+                    md_content += f"{content}\n\n"
+            else:
+                md_content += "Description unavailable.\n\n"
     
-    # Add index sections
-    md_content += "\n---\n\n## Index by Service Category\n\n"
-    
-    for category in sorted(all_categories.keys()):
-        vendors = sorted(all_categories[category])
-        if vendors:
-            md_content += f"\n### {category}\n"
-            entries = [f"{n}. {num_to_name.get(n, '')}" for n in vendors]
-            md_content += f"**Vendors:** {', '.join(entries)}\n"
-    
+    # Add index section (only Age Group index, two-column lists)
     md_content += "\n---\n\n## Index by Age Group Served\n\n"
-    
+
     for tag in sorted(all_tags.keys()):
         vendors = sorted(all_tags[tag])
         if vendors:
             md_content += f"\n### {tag}\n"
             entries = [f"{n}. {num_to_name.get(n, '')}" for n in vendors]
-            md_content += f"**Vendors:** {', '.join(entries)}\n"
+            # two-column markdown table
+            md_content += "\n| | |\n|---|---|\n"
+            left = entries[0::2]
+            right = entries[1::2]
+            for i in range(max(len(left), len(right))):
+                L = left[i] if i < len(left) else ''
+                R = right[i] if i < len(right) else ''
+                md_content += f"| {L} | {R} |\n"
     
-    # Write the directory to file (HTML if requested)
-    if str(output_path).lower().endswith('.html'):
+    # Write the directory to file
+    if str(output_path).lower().endswith('.docx'):
+        write_vendor_directory_docx(
+            output_path,
+            active,
+            cancelled_entries,
+            all_tags,
+            num_to_name,
+            AGE_GROUPS,
+        )
+    elif str(output_path).lower().endswith('.html'):
+        # Compute relative path from output file to repo assets so links work when opened via file://
+        # Use the site's CSS and fonts so the vendor directory matches the main site
         html_parts = ["<!doctype html>", "<html lang=\"en\">", "<head>", "<meta charset=\"utf-8\">",
                       "<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">",
                       f"<title>Disability Community Resource Fair 2026 - Vendor Directory</title>",
-                      "<style>",
-                      "body{font-family:Arial,Helvetica,sans-serif;margin:20px;color:#111}",
-                      "h1,h2,h3{margin:0 0 8px 0}",
-                      "section{margin-bottom:18px}",
-                      "table{border-collapse:collapse;width:100%}",
-                      "th,td{border:1px solid #333;padding:6px;text-align:left;vertical-align:top}",
-                      "@media print{body{margin:6mm} a[href]:after{content:\"\"}}",
-                      "</style>",
-                      "</head>", "<body>"]
+                      f'<link rel="stylesheet" href="{rel_assets_href}/css/bootstrap.min.css">',
+                      f'<link rel="stylesheet" href="{rel_assets_href}/css/academicons.min.css">',
+                      f'<link rel="stylesheet" href="{rel_assets_href}/css/scholar-icons.css">',
+                  f'<link rel="stylesheet" href="{rel_assets_href}/css/main.css">',
+                  "<style>",
+                  ".badge{display:inline-block;padding:2px 6px;margin:2px;border-radius:4px;font-size:0.82em}",
+                  ".badge-service{background:#e6f4ff;color:#023d66}",
+                  ".badge-age{background:#fff4e6;color:#4a6e1b}",
+                  ".badge-allages{background:#f0e6ff;color:#4a1766}",
+                      ".badge-status{background:#eef2f7;color:#4b5563}",
+                  "</style>",
+                  "</head>", "<body>"]
 
+        html_parts.extend(build_vendor_directory_banner_html(f"{rel_assets_href}/img/logo.png"))
         html_parts.append("<h1>Disability Community Resource Fair 2026 - Vendor Directory</h1>")
         html_parts.append("<p>Vendors are listed by table number, with services and full descriptions.</p>")
         html_parts.append("<hr>")
         html_parts.append("<section id=\"listings\">")
 
-        for v in vendors_combined:
+        for v in active:
             title = v['detail']['title'] if v['detail'] else v['request_name']
             html_parts.append(f"<h3>{v['number']}. {title}</h3>")
             if v['detail']:
                 cats = parse_categories(v['detail']['categories'])
-                if cats:
-                    cats_str = ', '.join([c for c in cats if c])
-                    html_parts.append(f"<p><strong>Services:</strong> {cats_str}</p>")
                 tags = parse_tags(v['detail']['tags'])
+                badge_parts = []
+                if cats:
+                    badge_parts.extend([f"<span class=\"badge badge-service\">{c}</span>" for c in cats if c])
                 if tags:
-                    tags_str = ', '.join([t for t in tags if t])
-                    html_parts.append(f"<p><strong>Age Groups:</strong> {tags_str}</p>")
+                    tag_set = set(tags)
+                    if all(a in tag_set for a in AGE_GROUPS):
+                        badge_parts.append("<span class=\"badge badge-age badge-allages\">All ages</span>")
+                    else:
+                        badge_parts.extend([f"<span class=\"badge badge-age\">{t}</span>" for t in tags if t])
+                if badge_parts:
+                    # keep service and age tags on one line
+                    html_parts.append(f"<p>{' '.join(badge_parts)}</p>")
                 content = v['detail']['content'].strip()
                 if content:
                     # simple paragraph wrapping; preserve newlines
                     paragraphs = [f"<p>{p.strip()}</p>" for p in content.split('\n\n') if p.strip()]
                     html_parts.extend(paragraphs)
 
+        if cancelled_entries:
+            html_parts.append("<hr>")
+            html_parts.append("<section id=\"unable-to-attend\">")
+            html_parts.append("<h2>Unable to Attend</h2>")
+            for v in cancelled_entries:
+                title = v['detail']['title'] if v['detail'] else v['request_name']
+                html_parts.append(f"<h3>{title}</h3>")
+                if v['detail']:
+                    cats = parse_categories(v['detail']['categories'])
+                    tags = parse_tags(v['detail']['tags'])
+                    badge_parts = []
+                    if cats:
+                        badge_parts.extend([f"<span class=\"badge badge-service\">{c}</span>" for c in cats if c])
+                    if tags:
+                        tag_set = set(tags)
+                        if all(a in tag_set for a in AGE_GROUPS):
+                            badge_parts.append("<span class=\"badge badge-age badge-allages\">All ages</span>")
+                        else:
+                            badge_parts.extend([f"<span class=\"badge badge-age\">{t}</span>" for t in tags if t])
+                    if badge_parts:
+                        html_parts.append(f"<p>{' '.join(badge_parts)}</p>")
+                    content = v['detail']['content'].strip()
+                    if content:
+                        paragraphs = [f"<p>{p.strip()}</p>" for p in content.split('\n\n') if p.strip()]
+                        html_parts.extend(paragraphs)
+                else:
+                    html_parts.append("<p>Description unavailable.</p>")
+            html_parts.append("</section>")
+
         html_parts.append("</section>")
 
-        # Index by service category
+        # Index by age group only. Render as two-column responsive grid
         html_parts.append("<hr>")
-        html_parts.append("<section id=\"index-services\">")
-        html_parts.append("<h2>Index by Service Category</h2>")
-        for category in sorted(all_categories.keys()):
-            vendors = sorted(all_categories[category])
-            if vendors:
-                html_parts.append(f"<h3>{category}</h3>")
-                html_parts.append('<p><strong>Vendors:</strong> ' + ', '.join([f"{n}. {num_to_name.get(n, '')}" for n in vendors]) + '</p>')
-        html_parts.append("</section>")
-
-        # Index by age group
         html_parts.append("<section id=\"index-age\">")
         html_parts.append("<h2>Index by Age Group Served</h2>")
+        html_parts.append('<style>.age-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}.age-group{margin-bottom:12px}.age-group h3{margin:4px 0}</style>')
+        html_parts.append('<div class="age-grid">')
         for tag in sorted(all_tags.keys()):
             vendors = sorted(all_tags[tag])
             if vendors:
-                html_parts.append(f"<h3>{tag}</h3>")
-                html_parts.append('<p><strong>Vendors:</strong> ' + ', '.join([f"{n}. {num_to_name.get(n, '')}" for n in vendors]) + '</p>')
+                html_parts.append(f"<div class=\"age-group\"><h3>{tag}</h3>")
+                html_parts.append('<ul>')
+                for n in vendors:
+                    html_parts.append(f"<li>{n}. {num_to_name.get(n, '')}</li>")
+                html_parts.append('</ul></div>')
+        html_parts.append('</div>')
         html_parts.append("</section>")
 
         html_parts.append("</body></html>")
@@ -734,6 +1263,10 @@ This is the comprehensive vendor directory for the 2026 Disability Community Res
 def main():
     """Main execution function."""
     import sys
+
+    parser = argparse.ArgumentParser(description='Generate the 2026 Disability Community Resource Fair vendor directory.')
+    parser.add_argument('--format', choices=['docx', 'html', 'md'], default='docx', help='Output format for the vendor directory.')
+    args = parser.parse_args()
     
     # Get base directory (parent of this script)
     base_dir = os.path.dirname(os.path.abspath(__file__))
@@ -743,9 +1276,10 @@ def main():
     # File paths
     fair_logistics_path = os.path.join(data_dir, 'fair_logistics.xlsx')
     vendor_requests_csv = os.path.join(data_dir, '2026_vendor_requests.csv')
-    vendor_directory_md = os.path.join(data_dir, '2026_vendor_directory.html')
+    vendor_directory_md = os.path.join(data_dir, f'2026_vendor_directory.{args.format}')
     vendor_missing_report = os.path.join(data_dir, '2026_missing_vendors.md')
     vendor_map_path = os.path.join(data_dir, 'vendor_map.xlsx')
+    vendor_filename_map_path = os.path.join(data_dir, 'vendor_filename_map.csv')
     
     print("=" * 70)
     print("2026 Disability Community Resource Fair - Vendor Directory Generator")
@@ -781,7 +1315,24 @@ def main():
     # Step 4: Generate vendor directory
     print("\n[4/4] Generating vendor directory...")
     try:
-        stats = generate_vendor_directory(vendor_requests, vendor_details, vendor_directory_md, output_missing_path=vendor_missing_report, vendor_map_path=vendor_map_path)
+        vendor_filename_map = read_vendor_filename_map(vendor_filename_map_path)
+        cancelled = [
+            "Luke5Adventures",
+            "Carrita Counseling",
+            "Keck Health",
+            "DVB Financial",
+            "Technology Assisted Children’s Home Program (TACHP)",
+        ]
+
+        stats = generate_vendor_directory(
+            vendor_requests,
+            vendor_details,
+            vendor_directory_md,
+            output_missing_path=vendor_missing_report,
+            vendor_map_path=vendor_map_path,
+            vendor_filename_map=vendor_filename_map,
+            cancelled_names=cancelled,
+        )
         print(f"      ✓ Generated {vendor_directory_md}")
         print(f"\n      Statistics:")
         print(f"        - Vendors: {stats['total_vendors']}")

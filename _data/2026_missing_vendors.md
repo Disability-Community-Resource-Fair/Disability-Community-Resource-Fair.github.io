@@ -8,8 +8,6 @@ Vendors present in fair logistics but missing a corresponding `_posts` markdown 
 
 | Table Number | Vendor Name |
 |---:|---|
-| 34 | PerformCare |
-| 61 | PPL First |
 
 ## B. In `_posts` but not in logistics
 
